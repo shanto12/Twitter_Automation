@@ -34,6 +34,10 @@ def all_user_twets(api, user_name):
     # for friend in user:
     #     print(friend.screen_name)
 
+def create_csv(df_dict, file_name):
+    df = pd.DataFrame(df_dict)
+    df.to_csv(file_name, index=False)
+
 def friends_list(api):
     csv_file_name = "followers_list_exported.csv"
     columns = ['description', 'friends_count', 'id', 'location', 'name', 'screen_name', 'statuses_count', 'verified']
@@ -61,9 +65,55 @@ def friends_list(api):
     df = pd.DataFrame(friends_dict, columns=columns)
     df.to_csv(csv_file_name, index=False)
 
+def hashtag_search(api, hashtag):
+    csv_file_name = "hashtag_tweets_exported.csv"
+    columns = ['id', {'author': ['screen_name', 'friends_count', 'followers_count', 'created_at']},
+               'retweet_count', 'location', 'source', 'text', 'statuses_count', {'user': 'verified'}]
+
+    hashtag_dict = dict()
+    for value1 in columns:
+        if isinstance(value1, str):
+            hashtag_dict[value1] = []
+        elif isinstance(value1, dict):
+            for col2, value2 in value1.items():
+                if isinstance(value2, str):
+                    hashtag_dict[value2] = []
+                elif isinstance(value2, list):
+                    for value3 in value2:
+                        hashtag_dict[value3] = []
+
+    hashtag_dict['url'] = []
+
+    # hashtag_dict = {col_name: [] for col_name in columns}
+    for tweet in tw.Cursor(api.search, q=hashtag, count=200).items(200):
+        for value1 in columns:
+            if isinstance(value1, str):
+                hashtag_dict[value1].append(getattr(tweet, value1, None))
+            elif isinstance(value1, dict):
+                for col2, value2 in value1.items():
+                    if isinstance(value2, str):
+                        hashtag_dict[value2].append(getattr(getattr(tweet, col2), value2, None))
+                        # hashtag_dict[value2] = []
+                    elif isinstance(value2, list):
+                        for value3 in value2:
+                            hashtag_dict[value3].append(getattr(getattr(tweet, col2), value3, None))
+                            # hashtag_dict[value3] = []
+
+        hashtag_dict['url'].append(f"https://twitter.com/{hashtag_dict['screen_name'][-1]}/status/{hashtag_dict['id'][-1]}")
+    print(hashtag_dict)
+
+    create_csv(hashtag_dict, csv_file_name)
+    # df = pd.DataFrame(hashtag_dict, columns=columns)
+    # df.to_csv(csv_file_name, index=False)
+
+    # r = api.search(hashtag)
+    # for tweet in api.search(hashtag):
+    #
+
 
 api = tw_auth()
 # test_tweet(api)
 # all_user_twets(api, "eugenegu")
-friends_list(api)
+# friends_list(api)
+hashtag_search(api, "#HCQWorks")
 print("DONE")
